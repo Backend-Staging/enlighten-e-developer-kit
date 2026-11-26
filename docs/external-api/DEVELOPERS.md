@@ -28,4 +28,4 @@ Client person routes require a user token and an **active** `WorkspaceClient` li
 
 ## License
 
-**MIT** for the developer kit only (`docs/external-api/`, `examples/expo-client/`, `examples/server-node/`, OpenAPI). See `LICENSE` and `LICENSE_DECISION.md`. Production Wagtail/backend repo visibility is unchanged.
+**MIT** for the developer kit only (`docs/external-api/`, `examples/expo-client/`, `examples/server-node/`, OpenAPI). See `LICENSE` and `LICENSE_DECISION.md`. Public kit: https://github.com/Backend-Staging/enlighten-e-developer-kit. Production Wagtail/backend repo visibility is unchanged.

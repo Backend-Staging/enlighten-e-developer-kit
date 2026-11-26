@@ -28,3 +28,9 @@ Do **not** treat a root `LICENSE` (none today) or this kit MIT as relicensing th
 ## Public “View source”
 
 Point Developers “View source” / kit pages at `docs/external-api/LICENSE` (and this decision record for scope). The kit may be described as MIT-licensed developer materials; do not claim the whole production monorepo is open source.
+
+## Published kit repository
+
+Public source (anonymous): https://github.com/Backend-Staging/enlighten-e-developer-kit
+
+Production application repositories remain private.
