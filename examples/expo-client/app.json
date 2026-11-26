@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Enlighten-E Client Sample",
+    "slug": "enlighten-e-expo-client",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "enlightene",
+    "platforms": ["ios", "android", "web"],
+    "userInterfaceStyle": "light"
+  }
+}

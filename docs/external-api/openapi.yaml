@@ -1,0 +1,310 @@
+openapi: 3.0.3
+info:
+  title: Enlighten-E External API
+  version: "1.1.0"
+  license:
+    name: MIT
+    url: https://github.com/Backend-Staging/enlighten-e/blob/cursor/developer-kit-mit-license-294b/docs/external-api/LICENSE
+  description: |
+    Phase 10 external API for branded apps.
+    Base URL (intentional spelling): `https://api.enlightene-e.com/api/v1`
+    Spec and developer-kit samples are MIT-licensed; the production application is not.
+
+    Auth:
+    - Server API keys: `Authorization: Bearer ee_test_…` (sandbox) or `ee_live_…` (production).
+      High-entropy secrets are shown once; only a hash + prefix are stored. Server-side only —
+      never embed in mobile apps or public JavaScript.
+    - OAuth 2.0 Bearer (django-oauth-toolkit): Authorization Code + PKCE for native apps;
+      client-credentials for machines.
+    - Portal session cookie for `/me` parity.
+
+    Credential acceptance:
+    - Server keys / client-credentials → machine staff identity on `/workspaces/{id}/staff/...`
+      (not client person routes).
+    - User OAuth / session → staff or client paths per membership / active WorkspaceClient.
+    - Keys are limited by workspace, key scopes, and the workspace package entitlements.
+
+    Workspace and profile are selected by the path (`/workspaces/{id}/staff|client/...`).
+    Do not send `X-Enlighten-Profile` or `X-Workspace`; conflicting values return 400.
+    Mutating writes should send `Idempotency-Key` (scoped to workspace + caller + operation).
+    Retries with the same key return the original response.
+servers:
+  - url: https://api.enlightene-e.com/api/v1
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+paths:
+  /me:
+    get:
+      summary: Current person, staff memberships, and client links
+      responses:
+        "200":
+          description: Identity payload
+  /workspaces/{workspace_id}/staff/capabilities:
+    get:
+      summary: Staff capabilities ∩ package entitlements ∩ app scopes
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Capabilities
+  /workspaces/{workspace_id}/client/capabilities:
+    get:
+      summary: Client capabilities
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Capabilities
+  /workspaces/{workspace_id}/client/crm/inquiries:
+    get:
+      summary: List own inquiries
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Client-safe inquiry list
+    post:
+      summary: Submit an inquiry
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - $ref: "#/components/parameters/idempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string }
+                phone: { type: string }
+                company_name: { type: string }
+      responses:
+        "201":
+          description: Created
+  /workspaces/{workspace_id}/staff/crm/contacts:
+    get:
+      summary: List workspace contacts
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Contacts
+  /workspaces/{workspace_id}/staff/crm/inquiries:
+    get:
+      summary: List workspace inquiries (includes internal notes)
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Inquiries
+  /workspaces/{workspace_id}/staff/calendars:
+    get:
+      summary: List calendars
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Calendars
+    post:
+      summary: Create calendar
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "201":
+          description: Created
+  /workspaces/{workspace_id}/client/availability:
+    get:
+      summary: Available dates or times (no other customers' PII)
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - name: calendar_id
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Availability
+  /workspaces/{workspace_id}/client/appointments:
+    get:
+      summary: List own appointments
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Appointments
+    post:
+      summary: Book an appointment
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - $ref: "#/components/parameters/idempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calendar_id, preferred_date, preferred_time]
+              properties:
+                calendar_id: { type: integer }
+                preferred_date: { type: string, format: date }
+                preferred_time: { type: string, example: "09:00 AM" }
+      responses:
+        "201":
+          description: Booked
+        "409":
+          description: Slot conflict or idempotency conflict
+  /workspaces/{workspace_id}/client/appointments/{appointment_id}/reschedule:
+    post:
+      summary: Reschedule own appointment
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - $ref: "#/components/parameters/appointmentId"
+        - $ref: "#/components/parameters/idempotencyKey"
+      responses:
+        "200":
+          description: Rescheduled
+  /workspaces/{workspace_id}/client/appointments/{appointment_id}/cancel:
+    post:
+      summary: Cancel own appointment
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - $ref: "#/components/parameters/appointmentId"
+      responses:
+        "200":
+          description: Cancelled
+  /workspaces/{workspace_id}/staff/appointments:
+    get:
+      summary: List workspace appointments
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Appointments
+  /workspaces/{workspace_id}/staff/appointments/create:
+    post:
+      summary: Staff book on behalf of a client
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - $ref: "#/components/parameters/idempotencyKey"
+      responses:
+        "201":
+          description: Booked
+  /workspaces/{workspace_id}/staff/appointments/{appointment_id}/reschedule:
+    post:
+      summary: Staff reschedule
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - $ref: "#/components/parameters/appointmentId"
+      responses:
+        "200":
+          description: Rescheduled
+  /workspaces/{workspace_id}/staff/appointments/{appointment_id}/cancel:
+    post:
+      summary: Staff cancel
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - $ref: "#/components/parameters/appointmentId"
+      responses:
+        "200":
+          description: Cancelled
+  /workspaces/{workspace_id}/staff/metrics:
+    get:
+      summary: Workspace metric counts
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Metrics
+  /workspaces/{workspace_id}/staff/payments/status:
+    get:
+      summary: Masked payment configuration status
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Status
+  /developers/register:
+    post:
+      summary: Register a developer account (no paid client workspace)
+      security: []
+      responses:
+        "201":
+          description: Developer created; email verification required
+  /developers/verify:
+    post:
+      summary: Verify developer email and activate sandbox access
+      responses:
+        "200":
+          description: Verified
+  /developers/keys:
+    get:
+      summary: List server API keys the caller can manage (secrets redacted)
+      responses:
+        "200":
+          description: Key metadata
+    post:
+      summary: Create sandbox or production server API key (secret shown once)
+      responses:
+        "201":
+          description: Created; includes api_key once
+  /developers/keys/{key_id}/rotate:
+    post:
+      summary: Rotate a server API key (new secret shown once)
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Rotated
+  /developers/keys/{key_id}/revoke:
+    post:
+      summary: Revoke a server API key
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Revoked
+  /openapi.yaml:
+    get:
+      summary: Download versioned OpenAPI document
+      security: []
+      responses:
+        "200":
+          description: YAML OpenAPI
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: OAuth2
+      description: OAuth access token from /api/o/token/
+    apiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ee_test_|ee_live_
+      description: Server API key (hash stored; never log the secret)
+  parameters:
+    workspaceId:
+      name: workspace_id
+      in: path
+      required: true
+      schema: { type: string }
+      description: Workspace public UUID or short_id
+    appointmentId:
+      name: appointment_id
+      in: path
+      required: true
+      schema: { type: string }
+    idempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
